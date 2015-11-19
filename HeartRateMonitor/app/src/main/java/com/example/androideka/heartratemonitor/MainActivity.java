@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -19,27 +20,31 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
-    private BluetoothAdapter bluetooth;
+    private BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
+    private InputStream inputStream;
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            if(BluetoothDevice.ACTION_FOUND.equals(action))
-            {
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 Log.d("NAME", "" + device.getName());
                 Log.d("ADDRESS", "" + device.getAddress());
                 Toast.makeText(context, "" + device.getName(), Toast.LENGTH_LONG).show();
-                if(device.getName() != null && device.getName().equals("HXM022879"))
-                {
+                if (device.getName() != null && device.getName().equals("HXM022879")) {
                     try {
                         bluetooth.cancelDiscovery();
                         long msb = 10;
@@ -47,13 +52,17 @@ public class MainActivity extends AppCompatActivity {
                         UUID uuid = new UUID(msb, lsb);
 
                         Method method = device.getClass().getMethod("setPin", byte[].class);
-                        byte[] pin = {(byte)1234};
+                        byte[] pin = {(byte) 1234};
                         method.invoke(device, pin);
                         device.getClass().getMethod("setPairingConfirmation",
                                 boolean.class).invoke(device, true);
                         device.getClass().getMethod("cancelPairingUserInput").invoke(device);
                         BluetoothSocket socket = device.createRfcommSocketToServiceRecord(uuid);
+                        socket = (BluetoothSocket) device.getClass().getMethod("createRfcommSocket",
+                                new Class[]{int.class}).invoke(device,1);
+                        Log.d("BLUETOOTH", "Connecting to socket.....");
                         socket.connect();
+                        Log.d("BLUETOOTH", "Socket connected");
                         monitorHeartRate(socket);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -85,9 +94,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        bluetooth = BluetoothAdapter.getDefaultAdapter();
-        if(bluetooth != null && !bluetooth.isEnabled())
-        {
+        if (bluetooth != null && !bluetooth.isEnabled()) {
             Intent enable = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enable, 42);
         }
@@ -97,14 +104,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
-        if(requestCode == 42)
-        {
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == 42) {
             Log.d("BLUETOOTH", "Bluetooth Enabled.");
-        }
-        else
-        {
+        } else {
             Log.e("BLUETOOTH", "Bluetooth not enabled.");
         }
     }
@@ -131,23 +134,48 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    protected void onDestroy()
-    {
-        super.onDestroy();
-        unregisterReceiver(receiver);
-    }
-
-    public void connect(View view)
-    {
-        if(bluetooth.startDiscovery())
-        {
+    public void connect(View view) {
+        if (bluetooth.startDiscovery()) {
             Log.d("BLUETOOTH", "Scanning for devices...");
         }
     }
 
-    public void monitorHeartRate(BluetoothSocket socket)
-    {
+    public void monitorHeartRate(BluetoothSocket socket) throws IOException {
         Log.d("SUCCESS", "Successfully opened a socket to the heart rate monitor.");
+        inputStream = socket.getInputStream();
+        while(true)
+        {socket 
+            System.out.println("" + inputStream.read());
+        }
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        registerReceiver(receiver, filter);
+    }
+
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+        unregisterReceiver(receiver);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 }
