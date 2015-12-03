@@ -15,4 +15,11 @@
         android:onClick="connect"
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"/>
+    <Button
+        android:id="@+id/getData"
+        android:text="Read data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/connect"
+        android:onClick="monitor"/>
 </RelativeLayout>
